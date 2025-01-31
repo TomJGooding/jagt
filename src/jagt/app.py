@@ -1,8 +1,9 @@
 import dataclasses
 import subprocess
 
+from rich.text import Text
 from textual.app import App, ComposeResult
-from textual.widgets import DataTable
+from textual.widgets import OptionList
 
 
 @dataclasses.dataclass
@@ -33,29 +34,52 @@ def git_log() -> list[LogEntry]:
     return entries
 
 
-class LogView(DataTable):
+class LogView(OptionList):
+    COMPONENT_CLASSES = {
+        "log-view--hash",
+        "log-view--subject",
+    }
+
     DEFAULT_CSS = """
-    LogTable {
+    LogView {
         height: 1fr;
+
+        .log-view--hash {
+            color: $text-accent;
+        }
+
+        .log-view--subject {
+            color: $foreground;
+        }
+
     }
     """
 
-    COLUMNS = ["Hash", "Date", "Author", "Subject"]
-
-    def __init__(self) -> None:
-        super().__init__(
-            show_header=False,
-            cursor_type="row",
-        )
-
-    def on_mount(self) -> None:
-        for column in self.COLUMNS:
-            self.add_column(column, key=column.lower())
-
     def add_entries(self, entries: list[LogEntry]) -> None:
-        # TODO: Add some color to the log columns
-        rows = [list(dataclasses.asdict(entry).values()) for entry in entries]
-        self.add_rows(rows)
+        if not entries:
+            return
+        content = [self.render_entry(entry) for entry in entries]
+        self.add_options(content)
+        self.highlighted = 0
+
+    def render_entry(self, entry: LogEntry) -> Text:
+        # TODO: I'm not decided yet whether the log view should display other
+        # info such as the date and author.
+        hash_style = self.get_component_rich_style(
+            "log-view--hash",
+            partial=True,
+        )
+        subject_style = self.get_component_rich_style(
+            "log-view--subject",
+            partial=True,
+        )
+        spacer = " "
+
+        return Text.assemble(
+            (entry.hash, hash_style),
+            spacer,
+            (entry.subject, subject_style),
+        )
 
 
 class JagtApp(App):
