@@ -61,17 +61,12 @@ class LogView(OptionList):
     def add_entries(self, entries: list[LogEntry]) -> None:
         if not entries:
             return
-        content = [
-            Option(
-                self.render_entry(entry),
-                id=entry.hash_short,
-            )
-            for entry in entries
-        ]
-        self.add_options(content)
+        self.add_options(
+            [self._make_entry_content(entry) for entry in entries],
+        )
         self.highlighted = 0
 
-    def render_entry(self, entry: LogEntry) -> Text:
+    def _make_entry_content(self, entry: LogEntry) -> Option:
         # TODO: I'm not decided yet whether the log view should display other
         # info such as the date and author.
         hash_style = self.get_component_rich_style(
@@ -82,13 +77,15 @@ class LogView(OptionList):
             "log-view--subject",
             partial=True,
         )
-        spacer = " "
 
-        return Text.assemble(
+        spacer = " "
+        prompt = Text.assemble(
             (entry.hash_short, hash_style),
             spacer,
             (entry.subject, subject_style),
         )
+
+        return Option(prompt, id=entry.hash_short)
 
 
 class JagtApp(App):
