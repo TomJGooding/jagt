@@ -1,14 +1,15 @@
-import dataclasses
 import subprocess
+from dataclasses import dataclass
 
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.widgets import OptionList
+from textual.widgets.option_list import Option
 
 
-@dataclasses.dataclass
+@dataclass(frozen=True)
 class LogEntry:
-    hash: str
+    hash_short: str
     date: str
     author: str
     subject: str
@@ -28,8 +29,10 @@ def git_log() -> list[LogEntry]:
     for line in output.splitlines():
         split_info = line.split(b"\x00", maxsplit=info_count)
         assert len(split_info) == info_count
-        hash, date, author, subject = [info.decode("utf-8") for info in split_info]
-        entries.append(LogEntry(hash, date, author, subject))
+        hash_short, date, author, subject = [
+            info.decode("utf-8") for info in split_info
+        ]
+        entries.append(LogEntry(hash_short, date, author, subject))
 
     return entries
 
@@ -58,7 +61,13 @@ class LogView(OptionList):
     def add_entries(self, entries: list[LogEntry]) -> None:
         if not entries:
             return
-        content = [self.render_entry(entry) for entry in entries]
+        content = [
+            Option(
+                self.render_entry(entry),
+                id=entry.hash_short,
+            )
+            for entry in entries
+        ]
         self.add_options(content)
         self.highlighted = 0
 
@@ -76,7 +85,7 @@ class LogView(OptionList):
         spacer = " "
 
         return Text.assemble(
-            (entry.hash, hash_style),
+            (entry.hash_short, hash_style),
             spacer,
             (entry.subject, subject_style),
         )
