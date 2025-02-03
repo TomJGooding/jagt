@@ -92,7 +92,7 @@ class LogView(OptionList):
     DEFAULT_CSS = """
     LogView {
         height: 1fr;
-        border: solid $surface-lighten-3;
+        border: solid $foreground 50%;
         padding: 0;
 
         &:focus {
@@ -161,7 +161,7 @@ class CommitInfoView(VerticalScroll):
         height: auto;
         max-height: 100%;
         background: $surface;
-        border: solid $surface-lighten-3;
+        border: solid $foreground 50%;
 
         .commit-info-view--hash {
             color: $text-accent;
@@ -218,7 +218,7 @@ class CommitMessageView(VerticalScroll):
         height: auto;
         max-height: 100%;
         background: $surface;
-        border: solid $surface-lighten-3;
+        border: solid $foreground 50%;
 
         .commit-message-view--subject {
             text-style: bold;
@@ -262,7 +262,7 @@ class CommitDiffView(VerticalScroll):
         height: auto;
         max-height: 100%;
         background: $surface;
-        border: solid $surface-lighten-3;
+        border: solid $foreground 50%;
 
         &:focus {
             border: solid $border;
