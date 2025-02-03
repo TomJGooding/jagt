@@ -86,7 +86,6 @@ def git_show(commit_hash: str) -> CommitDetails:
 class LogView(OptionList):
     COMPONENT_CLASSES = {
         "log-view--hash",
-        "log-view--subject",
     }
 
     DEFAULT_CSS = """
@@ -102,11 +101,6 @@ class LogView(OptionList):
         .log-view--hash {
             color: $text-accent;
         }
-
-        .log-view--subject {
-            color: $foreground;
-        }
-
     }
     """
 
@@ -127,16 +121,11 @@ class LogView(OptionList):
             "log-view--hash",
             partial=True,
         )
-        subject_style = self.get_component_rich_style(
-            "log-view--subject",
-            partial=True,
-        )
-
         spacer = " "
         prompt = Text.assemble(
             (entry.hash_short, hash_style),
             spacer,
-            (entry.subject, subject_style),
+            entry.subject,
         )
 
         return Option(prompt, id=entry.hash_short)
