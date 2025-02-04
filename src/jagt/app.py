@@ -260,12 +260,16 @@ class CommitDiffView(VerticalScroll):
     }
     """
 
+    DARK_SYNTAX_THEME = "monokai"
+    LIGHT_SYNTAX_THEME = "default"
+
     commit_details: var[CommitDetails | None] = var(None)
+    theme: var[str] = var(DARK_SYNTAX_THEME)
 
     def compose(self) -> ComposeResult:
         yield Static()
 
-    def watch_commit_details(self) -> None:
+    def _update_syntax_content(self) -> None:
         commit = self.commit_details
         if commit is None:
             return
@@ -273,8 +277,25 @@ class CommitDiffView(VerticalScroll):
             commit.diff,
             lexer="diff",
             word_wrap=True,
+            theme=self.theme,
         )
         self.query_one(Static).update(syntax)
+
+    def watch_commit_details(self) -> None:
+        self._update_syntax_content()
+
+    def watch_theme(self) -> None:
+        self._update_syntax_content()
+
+    def on_mount(self) -> None:
+        self.watch(self.app, "theme", self._retheme)
+
+    def _retheme(self) -> None:
+        self.theme = (
+            self.DARK_SYNTAX_THEME
+            if self.app.current_theme.dark
+            else self.LIGHT_SYNTAX_THEME
+        )
 
 
 class CommitDetailsView(VerticalScroll, can_focus=False):
