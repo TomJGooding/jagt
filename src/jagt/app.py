@@ -46,7 +46,7 @@ def git_log() -> list[LogEntry]:
 
     info_count = len(format_placeholders)
     for line in output.splitlines():
-        split_info = line.split(b"\x00", maxsplit=info_count)
+        split_info = line.split(b"\x00", maxsplit=info_count - 1)
         assert len(split_info) == info_count
         hash_short, date, author_name, subject = [
             info.decode("utf-8") for info in split_info
@@ -66,7 +66,8 @@ def git_show(commit_hash: str) -> CommitDetails:
     )
 
     info_count = len(format_placeholders) + 1  # info plus the diff
-    split_info = output.split(b"\x00", maxsplit=info_count)
+    split_info = output.split(b"\x00", maxsplit=info_count - 1)
+    assert len(split_info) == info_count
     hash, date, author_name, author_email, subject, body, diff = [
         info.decode("utf-8") for info in split_info
     ]
