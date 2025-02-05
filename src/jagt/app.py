@@ -31,6 +31,7 @@ class CommitDetails:
     author_email: str
     subject: str
     body: str
+    short_stat: str
     diff: str
 
 
@@ -62,15 +63,17 @@ def git_show(commit_hash: str) -> CommitDetails:
 
     # TODO: Handle errors when running `git show`
     output = subprocess.check_output(
-        ["git", "show", commit_hash, format],
+        ["git", "show", commit_hash, "--shortstat", "--patch", format],
     )
 
     info_count = len(format_placeholders) + 1  # info plus the diff
     split_info = output.split(b"\x00", maxsplit=info_count - 1)
     assert len(split_info) == info_count
-    hash, date, author_name, author_email, subject, body, diff = [
+    hash, date, author_name, author_email, subject, body, diff_info = [
         info.decode("utf-8") for info in split_info
     ]
+    diff_info = diff_info.lstrip()
+    short_stat, diff = diff_info.split("\n", maxsplit=1)
     diff = diff.strip()
 
     return CommitDetails(
@@ -80,6 +83,7 @@ def git_show(commit_hash: str) -> CommitDetails:
         author_email,
         subject,
         body,
+        short_stat,
         diff,
     )
 
@@ -287,6 +291,8 @@ class CommitDiffView(VerticalScroll):
             word_wrap=True,
         )
         self.query_one(Static).update(syntax)
+
+        self.border_title = f"Diff: {commit.short_stat}"
 
 
 class CommitDetailsView(VerticalScroll, can_focus=False):
