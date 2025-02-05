@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from dataclasses import dataclass
 
 from rich.console import Group, NewLine
@@ -35,15 +36,29 @@ class CommitDetails:
     diff: str
 
 
+class GitCommandError(Exception):
+    def __init__(self, command: str, return_code: int, stderr: str) -> None:
+        self.command = command
+        self.return_code = return_code
+        self.stderr = stderr
+
+    def __str__(self) -> str:
+        return f"git command `{self.command}` failed: {self.stderr}"
+
+
 def git_log() -> list[LogEntry]:
     entries: list[LogEntry] = []
 
     format_placeholders = ["%h", "%as", "%an", "%s"]
     format = "--format=format:" + "%x00".join(format_placeholders)
 
-    # TODO: Handle errors when running `git log`
-    # e.g. when not a git repository
-    output = subprocess.check_output(["git", "log", format])
+    try:
+        output = subprocess.check_output(
+            ["git", "log", format],
+            stderr=subprocess.STDOUT,
+        )
+    except subprocess.CalledProcessError as error:
+        raise GitCommandError("log", error.returncode, error.output.decode())
 
     info_count = len(format_placeholders)
     for line in output.splitlines():
@@ -61,10 +76,13 @@ def git_show(commit_hash: str) -> CommitDetails:
     format_placeholders = ["%H", "%ad", "%an", "%ae", "%s", "%b"]
     format = "--format=format:" + "%x00".join(format_placeholders) + "%x00"
 
-    # TODO: Handle errors when running `git show`
-    output = subprocess.check_output(
-        ["git", "show", commit_hash, "--shortstat", "--patch", format],
-    )
+    try:
+        output = subprocess.check_output(
+            ["git", "show", commit_hash, "--shortstat", "--patch", format],
+            stderr=subprocess.STDOUT,
+        )
+    except subprocess.CalledProcessError as error:
+        raise GitCommandError("show", error.returncode, error.output.decode())
 
     info_count = len(format_placeholders) + 1  # info plus the diff
     split_info = output.split(b"\x00", maxsplit=info_count - 1)
@@ -323,6 +341,8 @@ class CommitDetailsView(VerticalScroll, can_focus=False):
 
 
 class JagtApp(App):
+    TITLE = "jagt"
+
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield LogView()
@@ -330,7 +350,13 @@ class JagtApp(App):
 
     def on_mount(self) -> None:
         log_view = self.query_one(LogView)
-        log_view.entries = git_log()
+        try:
+            log_view.entries = git_log()
+        except GitCommandError as error:
+            self.exit(
+                message=f"{self.title}: {error}",
+                return_code=error.return_code,
+            )
 
     @on(LogView.OptionHighlighted)
     def update_commit_details_view(
@@ -340,9 +366,17 @@ class JagtApp(App):
         commit_hash = event.option_id
         assert commit_hash is not None
         commit_details_view = self.query_one(CommitDetailsView)
-        commit_details_view.commit_details = git_show(commit_hash)
+        try:
+            commit_details_view.commit_details = git_show(commit_hash)
+        except GitCommandError as error:
+            self.exit(
+                message=f"{self.title}: {error}",
+                return_code=error.return_code,
+            )
 
 
 def run() -> None:
     app = JagtApp()
     app.run()
+    # https://textual.textualize.io/guide/app/#return-code
+    sys.exit(app.return_code or 0)
