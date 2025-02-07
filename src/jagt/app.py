@@ -122,6 +122,11 @@ class LogView(OptionList):
     def _make_entry_content(self, entry: LogEntry) -> Option:
         # TODO: I'm not decided yet whether the log view should display other
         # info such as the date and author.
+
+        # TODO: When the app theme changes, the accent color of the commit hash
+        # should also change accordingly. Unfortunately there doesn't seem to
+        # be a simple way of doing this currently in Textual:
+        # https://github.com/Textualize/textual/discussions/5502
         hash_style = self.get_component_rich_style(
             "log-view--hash",
             partial=True,
@@ -177,6 +182,11 @@ class CommitInfoView(VerticalScroll):
         commit = self.commit_details
         if commit is None:
             return
+
+        # TODO: When the app theme changes, the accent color of the commit hash
+        # should also change accordingly. Unfortunately there doesn't seem to
+        # be a simple way of doing this currently in Textual:
+        # https://github.com/Textualize/textual/discussions/5502
         hash_style = self.get_component_rich_style(
             "commit-info-view--hash",
             partial=True,
