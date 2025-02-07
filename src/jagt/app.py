@@ -109,13 +109,12 @@ def git_show(commit_hash: str) -> CommitDetails:
 class LogView(OptionList):
     COMPONENT_CLASSES = {
         "log-view--hash",
-        "log-view--subject",
     }
 
     DEFAULT_CSS = """
     LogView {
         height: 1fr;
-        border: solid $surface-lighten-3;
+        border: solid $foreground 50%;
         padding: 0;
 
         &:focus {
@@ -125,11 +124,6 @@ class LogView(OptionList):
         .log-view--hash {
             color: $text-accent;
         }
-
-        .log-view--subject {
-            color: $foreground;
-        }
-
     }
     """
 
@@ -146,20 +140,20 @@ class LogView(OptionList):
     def _make_entry_content(self, entry: LogEntry) -> Option:
         # TODO: I'm not decided yet whether the log view should display other
         # info such as the date and author.
+
+        # TODO: When the app theme changes, the accent color of the commit hash
+        # should also change accordingly. Unfortunately there doesn't seem to
+        # be a simple way of doing this currently in Textual:
+        # https://github.com/Textualize/textual/discussions/5502
         hash_style = self.get_component_rich_style(
             "log-view--hash",
             partial=True,
         )
-        subject_style = self.get_component_rich_style(
-            "log-view--subject",
-            partial=True,
-        )
-
         spacer = " "
         prompt = Text.assemble(
             (entry.hash_short, hash_style),
             spacer,
-            (entry.subject, subject_style),
+            entry.subject,
         )
 
         return Option(prompt, id=entry.hash_short)
@@ -184,7 +178,7 @@ class CommitInfoView(VerticalScroll):
         height: auto;
         max-height: 100%;
         background: $surface;
-        border: solid $surface-lighten-3;
+        border: solid $foreground 50%;
 
         .commit-info-view--hash {
             color: $text-accent;
@@ -206,6 +200,11 @@ class CommitInfoView(VerticalScroll):
         commit = self.commit_details
         if commit is None:
             return
+
+        # TODO: When the app theme changes, the accent color of the commit hash
+        # should also change accordingly. Unfortunately there doesn't seem to
+        # be a simple way of doing this currently in Textual:
+        # https://github.com/Textualize/textual/discussions/5502
         hash_style = self.get_component_rich_style(
             "commit-info-view--hash",
             partial=True,
@@ -241,7 +240,7 @@ class CommitMessageView(VerticalScroll):
         height: auto;
         max-height: 100%;
         background: $surface;
-        border: solid $surface-lighten-3;
+        border: solid $foreground 50%;
 
         .commit-message-view--subject {
             text-style: bold;
@@ -285,7 +284,7 @@ class CommitDiffView(VerticalScroll):
         height: auto;
         max-height: 100%;
         background: $surface;
-        border: solid $surface-lighten-3;
+        border: solid $foreground 50%;
 
         &:focus {
             border: solid $border;
@@ -294,12 +293,16 @@ class CommitDiffView(VerticalScroll):
     }
     """
 
+    DARK_SYNTAX_THEME = "monokai"
+    LIGHT_SYNTAX_THEME = "default"
+
     commit_details: var[CommitDetails | None] = var(None)
+    theme: var[str] = var(DARK_SYNTAX_THEME)
 
     def compose(self) -> ComposeResult:
         yield Static()
 
-    def watch_commit_details(self) -> None:
+    def _update_syntax_content(self) -> None:
         commit = self.commit_details
         if commit is None:
             return
@@ -307,10 +310,29 @@ class CommitDiffView(VerticalScroll):
             commit.diff,
             lexer="diff",
             word_wrap=True,
+            theme=self.theme,
         )
         self.query_one(Static).update(syntax)
 
+    def watch_commit_details(self) -> None:
+        commit = self.commit_details
+        if commit is None:
+            return
+        self._update_syntax_content()
         self.border_title = f"Diff: {commit.short_stat}"
+
+    def watch_theme(self) -> None:
+        self._update_syntax_content()
+
+    def on_mount(self) -> None:
+        self.watch(self.app, "theme", self._retheme)
+
+    def _retheme(self) -> None:
+        self.theme = (
+            self.DARK_SYNTAX_THEME
+            if self.app.current_theme.dark
+            else self.LIGHT_SYNTAX_THEME
+        )
 
 
 class CommitDetailsView(VerticalScroll, can_focus=False):
