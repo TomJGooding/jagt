@@ -290,8 +290,17 @@ class CommitDiffView(VerticalScroll):
             border: solid $border;
             background-tint: $foreground 5%;
         }
+
+        &.-warning-max-diff {
+            Static {
+                border-top: panel $warning;
+                border-title-style: italic;
+            }
+        }
     }
     """
+
+    MAX_DIFF_CHARS = 100_000
 
     DARK_SYNTAX_THEME = "monokai"
     LIGHT_SYNTAX_THEME = "default"
@@ -306,13 +315,22 @@ class CommitDiffView(VerticalScroll):
         commit = self.commit_details
         if commit is None:
             return
+        truncated_diff = commit.diff[: self.MAX_DIFF_CHARS]
         syntax = Syntax(
-            commit.diff,
+            truncated_diff,
             lexer="diff",
             word_wrap=True,
             theme=self.theme,
         )
-        self.query_one(Static).update(syntax)
+        diff_widget = self.query_one(Static)
+        diff_widget.update(syntax)
+
+        # TODO: Allow loading the full diff via a link or button
+        diff_exceeds_max = len(commit.diff) > self.MAX_DIFF_CHARS
+        self.set_class(diff_exceeds_max, "-warning-max-diff")
+        diff_widget.border_title = (
+            "Large commit: diff truncated" if diff_exceeds_max else None
+        )
 
     def watch_commit_details(self) -> None:
         commit = self.commit_details
