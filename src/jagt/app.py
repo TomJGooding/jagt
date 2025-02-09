@@ -12,6 +12,7 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.reactive import var
+from textual.screen import Screen
 from textual.widgets import OptionList, Static
 from textual.widgets.option_list import Option
 
@@ -380,9 +381,7 @@ class CommitDetailsView(VerticalScroll, can_focus=False):
         yield commit_diff
 
 
-class JagtApp(App):
-    TITLE = "jagt"
-
+class LogScreen(Screen):
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield LogView()
@@ -393,8 +392,8 @@ class JagtApp(App):
         try:
             log_view.entries = git_log()
         except GitCommandError as error:
-            self.exit(
-                message=f"{self.title}: {error}",
+            self.app.exit(
+                message=f"{self.app.title}: {error}",
                 return_code=error.return_code,
             )
 
@@ -409,10 +408,21 @@ class JagtApp(App):
         try:
             commit_details_view.commit_details = git_show(commit_hash)
         except GitCommandError as error:
-            self.exit(
-                message=f"{self.title}: {error}",
+            self.app.exit(
+                message=f"{self.app.title}: {error}",
                 return_code=error.return_code,
             )
+
+
+class JagtApp(App):
+    TITLE = "jagt"
+
+    MODES = {
+        "log": LogScreen,
+    }
+
+    def on_mount(self) -> None:
+        self.switch_mode("log")
 
 
 def run() -> None:
