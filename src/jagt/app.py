@@ -4,13 +4,12 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
-from rich.console import Group, NewLine
 from rich.syntax import Syntax
 from rich.table import Table
-from rich.text import Text
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll
+from textual.content import Content
 from textual.reactive import var
 from textual.screen import Screen
 from textual.widgets import OptionList, Static
@@ -108,10 +107,6 @@ def git_show(commit_hash: str) -> CommitDetails:
 
 
 class LogView(OptionList):
-    COMPONENT_CLASSES = {
-        "log-view--hash",
-    }
-
     DEFAULT_CSS = """
     LogView {
         height: 1fr;
@@ -120,10 +115,6 @@ class LogView(OptionList):
 
         &:focus {
             border: solid $border;
-        }
-
-        .log-view--hash {
-            color: $text-accent;
         }
     }
     """
@@ -141,23 +132,13 @@ class LogView(OptionList):
     def _make_entry_content(self, entry: LogEntry) -> Option:
         # TODO: I'm not decided yet whether the log view should display other
         # info such as the date and author.
-
-        # TODO: When the app theme changes, the accent color of the commit hash
-        # should also change accordingly. Unfortunately there doesn't seem to
-        # be a simple way of doing this currently in Textual:
-        # https://github.com/Textualize/textual/discussions/5502
-        hash_style = self.get_component_rich_style(
-            "log-view--hash",
-            partial=True,
-        )
-        spacer = " "
-        prompt = Text.assemble(
-            (entry.hash_short, hash_style),
-            spacer,
-            entry.subject,
+        content = Content.from_markup(
+            "[$text-accent]$hash_short[/] $subject",
+            hash_short=entry.hash_short,
+            subject=entry.subject,
         )
 
-        return Option(prompt, id=entry.hash_short)
+        return Option(content, id=entry.hash_short)
 
     @on(OptionList.OptionHighlighted)
     def _update_border_title(
@@ -170,10 +151,6 @@ class LogView(OptionList):
 
 
 class CommitInfoView(VerticalScroll):
-    COMPONENT_CLASSES = {
-        "commit-info-view--hash",
-    }
-
     DEFAULT_CSS = """
     CommitInfoView {
         height: auto;
@@ -181,8 +158,10 @@ class CommitInfoView(VerticalScroll):
         background: $surface;
         border: solid $foreground 50%;
 
-        .commit-info-view--hash {
+        #--hash {
             color: $text-accent;
+            text-wrap: nowrap;
+            text-overflow: clip;
         }
 
         &:focus {
@@ -195,26 +174,15 @@ class CommitInfoView(VerticalScroll):
     commit_details: var[CommitDetails | None] = var(None)
 
     def compose(self) -> ComposeResult:
-        yield Static()
+        yield Static(id="--hash")
+        yield Static(id="--info")
 
     def watch_commit_details(self) -> None:
         commit = self.commit_details
         if commit is None:
             return
 
-        # TODO: When the app theme changes, the accent color of the commit hash
-        # should also change accordingly. Unfortunately there doesn't seem to
-        # be a simple way of doing this currently in Textual:
-        # https://github.com/Textualize/textual/discussions/5502
-        hash_style = self.get_component_rich_style(
-            "commit-info-view--hash",
-            partial=True,
-        )
-        hash_text = Text(
-            f"commit {commit.hash}",
-            style=hash_style,
-            no_wrap=True,
-        )
+        self.query_one("#--hash", Static).update(f"commit {commit.hash}")
 
         info_grid = Table.grid()
         info_grid.add_row(
@@ -223,19 +191,10 @@ class CommitInfoView(VerticalScroll):
         )
         info_grid.add_row("Date: ", commit.date)
 
-        self.query_one(Static).update(
-            Group(
-                hash_text,
-                info_grid,
-            )
-        )
+        self.query_one("#--info", Static).update(info_grid)
 
 
 class CommitMessageView(VerticalScroll):
-    COMPONENT_CLASSES = {
-        "commit-message-view--subject",
-    }
-
     DEFAULT_CSS = """
     CommitMessageView {
         height: auto;
@@ -243,8 +202,9 @@ class CommitMessageView(VerticalScroll):
         background: $surface;
         border: solid $foreground 50%;
 
-        .commit-message-view--subject {
+        #--subject {
             text-style: bold;
+            margin-bottom: 1;
         }
 
         &:focus {
@@ -257,26 +217,15 @@ class CommitMessageView(VerticalScroll):
     commit_details: var[CommitDetails | None] = var(None)
 
     def compose(self) -> ComposeResult:
-        yield Static()
+        yield Static(id="--subject")
+        yield Static(id="--body")
 
     def watch_commit_details(self) -> None:
         commit = self.commit_details
         if commit is None:
             return
-        subject_style = self.get_component_rich_style(
-            "commit-message-view--subject",
-            partial=True,
-        )
-        subject_text = Text(commit.subject, style=subject_style)
-        body_text = Text(commit.body)
-
-        self.query_one(Static).update(
-            Group(
-                subject_text,
-                NewLine(),
-                body_text,
-            )
-        )
+        self.query_one("#--subject", Static).update(commit.subject)
+        self.query_one("#--body", Static).update(commit.body)
 
 
 class CommitDiffView(VerticalScroll):
