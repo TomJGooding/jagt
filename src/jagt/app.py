@@ -370,6 +370,12 @@ class JagtApp(App):
         "log": LogScreen,
     }
 
+    CSS = """
+    * {
+        scrollbar-size-vertical: 1;
+    }
+    """
+
     def on_mount(self) -> None:
         self.switch_mode("log")
 
