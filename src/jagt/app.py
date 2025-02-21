@@ -217,8 +217,8 @@ class CommitMessageView(VerticalScroll):
     commit_details: var[CommitDetails | None] = var(None)
 
     def compose(self) -> ComposeResult:
-        yield Static(id="--subject")
-        yield Static(id="--body")
+        yield Static(id="--subject", markup=False)
+        yield Static(id="--body", markup=False)
 
     def watch_commit_details(self) -> None:
         commit = self.commit_details
