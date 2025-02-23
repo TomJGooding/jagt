@@ -8,6 +8,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 from textual import on
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.content import Content
 from textual.reactive import var
@@ -107,6 +108,14 @@ def git_show(commit_hash: str) -> CommitDetails:
 
 
 class LogView(OptionList):
+    BINDINGS = [
+        Binding("j", "cursor_down", "Down", show=False),
+        Binding("k", "cursor_up", "Up", show=False),
+        Binding("space", "page_down", "Page Down", show=False),
+        Binding("g", "first", "First", show=False),
+        Binding("G", "last", "Last", show=False),
+    ]
+
     DEFAULT_CSS = """
     LogView {
         height: 1fr;
