@@ -13,7 +13,7 @@ from textual.containers import Horizontal, VerticalScroll
 from textual.content import Content
 from textual.reactive import var
 from textual.screen import Screen
-from textual.widgets import OptionList, Static
+from textual.widgets import Footer, OptionList, Static
 from textual.widgets.option_list import Option
 
 
@@ -340,10 +340,15 @@ class CommitDetailsView(VerticalScroll, can_focus=False):
 
 
 class LogScreen(Screen):
+    BINDINGS = [
+        ("y", "copy_commit_hash", "Copy Hash"),
+    ]
+
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield LogView()
             yield CommitDetailsView()
+        yield Footer()
 
     def on_mount(self) -> None:
         log_view = self.query_one(LogView)
@@ -370,6 +375,15 @@ class LogScreen(Screen):
                 message=f"{self.app.title}: {error}",
                 return_code=error.return_code,
             )
+
+    def action_copy_commit_hash(self) -> None:
+        # Textual warns that its copy_to_clipboard method does not work in all
+        # terminals. Maybe use an external library like pyperclip instead?
+        commit_details = self.query_one(CommitDetailsView).commit_details
+        if commit_details is None:
+            return
+        self.app.copy_to_clipboard(commit_details.hash)
+        self.notify(title="Copied to clipboard", message=commit_details.hash)
 
 
 class JagtApp(App):
