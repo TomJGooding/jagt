@@ -154,8 +154,8 @@ class LogView(OptionList):
         self,
         event: OptionList.OptionHighlighted,
     ) -> None:
-        commit_number = event.option_index + 1
         total_commits = self.option_count
+        commit_number = total_commits - event.option_index
         self.border_title = f"Commit {commit_number}/{total_commits}"
 
 
