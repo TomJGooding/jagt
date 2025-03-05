@@ -9,7 +9,8 @@ from rich.table import Table
 from textual import on
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, VerticalScroll
+from textual.command import DiscoveryHit, Hit, Hits, Provider, SimpleCommand
+from textual.containers import VerticalScroll
 from textual.content import Content
 from textual.reactive import var
 from textual.screen import Screen
@@ -339,15 +340,57 @@ class CommitDetailsView(VerticalScroll, can_focus=False):
         yield commit_diff
 
 
+class LogScreenCommands(Provider):
+    @property
+    def commands(self) -> list[SimpleCommand]:
+        screen = self.screen
+        assert isinstance(screen, LogScreen)
+        commands = [
+            SimpleCommand(
+                "Flip layout",
+                screen.flip_layout,
+                "Toggle vertical/horizontal layout",
+            ),
+        ]
+        return commands
+
+    async def discover(self) -> Hits:
+        for name, callback, help_text in self.commands:
+            yield DiscoveryHit(name, callback, help=help_text)
+
+    async def search(self, query: str) -> Hits:
+        matcher = self.matcher(query)
+        for name, callback, help_text in self.commands:
+            score = matcher.match(name)
+            if score > 0:
+                yield Hit(
+                    score,
+                    matcher.highlight(name),
+                    callback,
+                    help=help_text,
+                )
+
+
 class LogScreen(Screen):
     BINDINGS = [
         ("y", "copy_commit_hash", "Copy Hash"),
     ]
 
+    COMMANDS = {LogScreenCommands}
+
+    CSS = """
+    LogScreen {
+        layout: horizontal;
+
+        &.vertical-split {
+            layout: vertical;
+        }
+    }
+    """
+
     def compose(self) -> ComposeResult:
-        with Horizontal():
-            yield LogView()
-            yield CommitDetailsView()
+        yield LogView()
+        yield CommitDetailsView()
         yield Footer()
 
     def on_mount(self) -> None:
@@ -384,6 +427,9 @@ class LogScreen(Screen):
             return
         self.app.copy_to_clipboard(commit_details.hash)
         self.notify(title="Copied to clipboard", message=commit_details.hash)
+
+    def flip_layout(self) -> None:
+        self.toggle_class("vertical-split")
 
 
 class JagtApp(App):
