@@ -260,6 +260,8 @@ class CommitDiffView(VerticalScroll):
     }
     """
 
+    ALLOW_MAXIMIZE = True
+
     MAX_DIFF_CHARS = 100_000
 
     DARK_SYNTAX_THEME = "monokai"
